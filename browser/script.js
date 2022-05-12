@@ -21,10 +21,13 @@ async function start() {
 
 	main_thread()
 
+
+	//Testing, will be moved to webworker
 	const context = worker_thread('some sql command')
 	console.log("context",context)
 	const out = execute(context,"asd123")
 	console.log("out",out)
+
 }
 
 start().then()
