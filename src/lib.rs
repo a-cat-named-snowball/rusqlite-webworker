@@ -6,14 +6,12 @@ use wasm_bindgen::__rt::WasmRefCell;
 extern { pub fn sqlite(s: &str); }
 
 
+// Main thread in browser will insert here
 #[wasm_bindgen]
 pub fn main_thread() {
 	//Dummy use case
 	sqlite("insert a into table");
 }
-
-//use sqlite::State;
-
 
 
 struct SqlContext {
@@ -22,6 +20,9 @@ struct SqlContext {
 }
 
 
+// TODO: merge worker_thread function with execute function
+
+// Returns a ref to data that will need to be shared
 #[wasm_bindgen]
 pub fn worker_thread(name: &str) -> u32 {
 
@@ -33,6 +34,7 @@ pub fn worker_thread(name: &str) -> u32 {
 	Box::into_raw(Box::new(WasmRefCell::new(context))) as u32
 }
 
+//TODO: execute some sql command on the connection.
 #[wasm_bindgen]
 pub fn execute(context:u32, command :&str) -> String {
 	let context = context as *mut WasmRefCell<SqlContext>;
