@@ -1,19 +1,28 @@
-import init, {main_thread,worker_thread,execute} from "/pkg/rusqlite_webworker.js"
-
+import init, {main_thread} from "/pkg/rusqlite_webworker.js"
 
 const worker = new Worker('worker.js', { type: "module" })
 
-
-window.sqlite = (data) => {
+window.sqlite_execute = (pointer,command) => {
+	console.log("EXECUTE:",pointer,command)
 	worker.postMessage({
-		command:data,
-		params:[data]
+		action:"execute",
+		pointer,
+		command,
+	})
+}
+window.sqlite_query = (pointer,command) => {
+	console.log("QUERY:",pointer,command)
+	worker.postMessage({
+		action:"query",
+		pointer,
+		command,
 	})
 }
 
 
 async function start() {
 	await init()
+	console.log("starting")
 	
 	worker.addEventListener("message", e=> {
 		console.log(e)
@@ -23,10 +32,10 @@ async function start() {
 
 
 	//Testing, will be moved to webworker
-	const context = worker_thread('some sql command')
-	console.log("context",context)
-	const out = execute(context,"asd123")
-	console.log("out",out)
+	// const context = worker_thread('some sql command')
+	// console.log("context",context)
+	// const out = execute(context,"asd123")
+	// console.log("out",out)
 
 }
 
