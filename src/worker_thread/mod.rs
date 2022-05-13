@@ -1,57 +1,58 @@
 use rusqlite::{params, Connection, Result};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::__rt::WasmRefCell;
+use std::sync::{Mutex};
 
+extern crate console_error_panic_hook;
 
+// Using a struct here so more information can added later
 struct SqlContext {
-	conn:Connection,
-	//output:Option<String>,
+	conn:Option<Connection>,
 }
-
 impl SqlContext {
-	fn new() -> Self {
+	const fn new() -> Self {
 		Self {
-			conn:Connection::open_in_memory().unwrap(),
-			//output:Some("test output".to_owned()),
+			conn:None,
 		}
 	}
+}
 
-	fn to_pointer(self) -> u32 {
-		Box::into_raw(Box::new(WasmRefCell::new(self))) as u32
+
+static mut context:Option<Mutex<SqlContext>> = None;
+
+#[wasm_bindgen]
+pub fn worker_thread_init() -> u32 {
+	console_error_panic_hook::set_once();
+
+	unsafe {
+		matches!(context,None);
+		context = Some(Mutex::new(SqlContext::new()));
+		let mut lock = context.as_ref().unwrap().lock().unwrap();
+		lock.conn = Connection::open_in_memory().ok();
 	}
-}
-
-
-fn pointer_to_context(pointer:u32) -> &'static WasmRefCell<SqlContext> {
-	let context = pointer as *mut WasmRefCell<SqlContext>;
-	wasm_bindgen::__rt::assert_not_null(context);
-	unsafe { &*context }
-}
-
-
-// Returns a ref to data that will need to be shared
-#[wasm_bindgen]
-pub fn worker_thread(name: &str) -> u32 {
-
-	let context = SqlContext::new();
-	context.to_pointer()
+	return 12;
 }
 
 #[wasm_bindgen]
-pub fn execute(context_pointer: u32, command: &str) -> usize {
-	let context = pointer_to_context(context_pointer);
-	let conn = &context.borrow().conn;
-	conn.execute(command,[]).unwrap()
+pub fn execute(command: &str) -> usize {
+	unsafe {
+		let lock = context.as_ref().unwrap().lock().unwrap();
+		let conn = lock.conn.as_ref().unwrap();
+		conn.execute(command,[]).unwrap()
+	}
 }
 
 //TODO: Return some representation of rows
 
 #[wasm_bindgen]
-pub fn query(context_pointer:u32, command: &str) -> String {
-	// let context = pointer_to_context(context_pointer);
-	// let conn = &context.borrow().conn;
-	// let mut stmt = conn.prepare(command).unwrap();
-	// let rows = stmt.query([]).unwrap();
+pub fn query(command: &str) -> String {
+	unsafe {
+		let lock = context.as_ref().unwrap().lock().unwrap();
+		let conn = lock.conn.as_ref().unwrap();
+
+		let stmt = conn.prepare("INSERT INTO a (name) VALUES (?)").unwrap();
+		// let rows = stmt.query([]).unwrap();
+	}
 
 	//Box::into_raw(Box::new(WasmRefCell::new(self))) as u32
 	//let test_out = vec![vec!["test value".to_owned();5];10];

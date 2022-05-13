@@ -1,48 +1,62 @@
-
+use std::sync::{Mutex,MutexGuard};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::__rt::WasmRefCell;
 
+extern crate console_error_panic_hook;
+
+// Needs to be a static mut because it's going to store references to callbacks
+// These callbacks will be set by this thread, but executed by another.
+
+// The alternative is passing function pointers to JS and back, but I think
+// that would be less save, since ownership would be lost and data could
+// be overwritten.
+
+static mut WEB_WORKER:Option<Mutex<WebWorkerSqlite>> = None;
 
 
-#[wasm_bindgen(js_namespace = window, js_name = browser_dbg)]
-extern { pub fn browser_dbg(s:String); }
-
-// Main thread in browser will insert here
+// The browser will run this function on its main thread.
 #[wasm_bindgen]
 pub fn main_thread() {
 
-	// Get a reference 
-	let mut ww_sqlite = WebWorkerSqlite::new();
+	console_error_panic_hook::set_once();
 
-	// ww_sqlite.execute("SELECT * from data;",|rows:Vec<String>|{
-	// 	println!("{:}",rows[0]);
-	// });
-	
+	// Initalize the web worker callback structure
+	unsafe { WEB_WORKER = Some(Mutex::new(WebWorkerSqlite::new())); }
 
-	//When uncommented, browser gives error:
-	// Uncaught TypeError: Failed to resolve module specifier "env". Relative references must start with either "/", "./", or "../".
+	// Make some test calls to the web worker.
+	// This really needs wrapped in a macro or something -
+	// can't expect anyone to write lots of code like this.
+	unsafe {
+		WEB_WORKER.as_ref().unwrap().lock().unwrap().execute("
+		CREATE TABLE test (
+			id INTEGER PRIMARY KEY,
+			name TEXT NOT NULL
+		);",Box::new(|mut con,_|{
+			con.query("SELECT * from test",Box::new(|_,rows:Vec<String>|{
+				browser_dbg(format!("{:}",rows[0]));
+			}));
+		}));
 
-	browser_dbg("test browser degub".to_owned());
+	};
+}
 
-	ww_sqlite.query("SELECT * from data",|rows:Vec<String>|{
-		unsafe {
-			browser_dbg(format!("{:}",rows[0]));
-			browser_dbg("!!!".to_owned());
-		}
-	});
-	
+// Temporary, just using to to console.log things.
+#[wasm_bindgen(js_namespace = window, js_name = browser_dbg)]
+extern { pub fn browser_dbg(s:String); }
+
+// These JS functions will pass commands to the web worker
+#[wasm_bindgen]
+extern {
+	#[wasm_bindgen(js_namespace = window, js_name = sqlite_execute)]
+	pub fn sqlite_execute(command:&str);
+	#[wasm_bindgen(js_namespace = window, js_name = sqlite_query)]
+	pub fn sqlite_query(command:&str);
 }
 
 
-#[wasm_bindgen(js_namespace = window, js_name = sqlite_execute)]
-extern { pub fn sqlite_execute(pointer:u32,command:&str); }
-#[wasm_bindgen(js_namespace = window, js_name = sqlite_query)]
-extern { pub fn sqlite_query(pointer:u32,command:&str); }
-
 struct WebWorkerSqlite {
-	query_callback:Option<Box<dyn Fn(Vec<String>)>>,
-	execute_callback:Option<Box<dyn Fn(u32)>>,
-	returned_rows:Vec<Vec<String>>,
+	query_callback:Option<Box<dyn Fn(MutexGuard<WebWorkerSqlite>,Vec<String>)>>,
+	execute_callback:Option<Box<dyn Fn(MutexGuard<WebWorkerSqlite>,u32)>>,
 }
 
 impl WebWorkerSqlite {
@@ -50,38 +64,40 @@ impl WebWorkerSqlite {
 		Self {
 			query_callback:None,
 			execute_callback:None,
-			returned_rows:Vec::new(),
 		}
 	}
 
-	fn execute(&mut self,command:&str,f: fn(u32)){
-		self.execute_callback = Some(Box::new(f));
-		unsafe { sqlite_execute(self.get_pointer(),command); }
+	fn execute(&mut self,command:&str,f: Box<dyn Fn(MutexGuard<WebWorkerSqlite>,u32)>){
+		self.execute_callback = Some(f);
+		unsafe { sqlite_execute(command); }
 	}
 
-	fn query(&mut self,command:&str,f: fn(Vec<String>)){
-		self.query_callback = Some(Box::new(f));
-		unsafe { sqlite_query(self.get_pointer(),command); }
-	}
-
-	fn get_pointer(&self) -> u32 {
-		Box::into_raw(Box::new(WasmRefCell::new(self))) as u32
+	fn query(&mut self,command:&str,f: Box<dyn Fn(MutexGuard<WebWorkerSqlite>,Vec<String>)>){
+		self.query_callback = Some(f);
+		unsafe { sqlite_query(command); }
 	}
 
 } 
 
 
 #[wasm_bindgen]
-pub fn callback_query(pointer:u32,data:String) {
+pub fn callback_query(data:String) {
 
-	browser_dbg("callback received".to_owned());
+	let mut ww = unsafe { WEB_WORKER.as_ref().unwrap() };
 
-	let web_worker = pointer as *mut WasmRefCell<WebWorkerSqlite>;
-	wasm_bindgen::__rt::assert_not_null(web_worker);
-	let web_worker = unsafe { &*web_worker };
+	ww.lock().unwrap().query_callback.as_ref().unwrap()(
+		ww.lock().unwrap(),
+		vec![data;1]
+	);
+}
 
-	browser_dbg(data.clone());
+#[wasm_bindgen]
+pub fn callback_execute(data:u32) {
 
-	web_worker.borrow().query_callback.as_ref().unwrap()(vec![data;1]);
+	let mut ww = unsafe { WEB_WORKER.as_ref().unwrap() };
 
+	ww.lock().unwrap().execute_callback.as_ref().unwrap()(
+		ww.lock().unwrap(),
+		data.clone()
+	);
 }

@@ -19,3 +19,9 @@ features = ["bundled"]
 
 [dependencies.wasm-bindgen]
 version = "0.2"
+
+[dependencies.wasm-bindgen-futures]
+version = "0.4.30"
+
+[dependencies.console_error_panic_hook]
+version = "0.1.7"
