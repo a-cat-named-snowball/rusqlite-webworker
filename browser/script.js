@@ -1,4 +1,4 @@
-import init, {main_thread} from "/pkg/rusqlite_webworker.js"
+import init, {main_thread,callback_query} from "/pkg/rusqlite_webworker.js"
 
 const worker = new Worker('worker.js', { type: "module" })
 
@@ -19,6 +19,10 @@ window.sqlite_query = (pointer,command) => {
 	})
 }
 
+window.browser_dbg = (a) => {
+	console.log(a)
+}
+
 
 async function start() {
 	await init()
@@ -26,6 +30,12 @@ async function start() {
 	
 	worker.addEventListener("message", e=> {
 		console.log(e)
+		if(e.data.action==="query"){
+			callback_query(e.data.pointer,e.data.output)
+		}
+		// else if(e.data.action==="execute"){
+		// 	callback_query(e.data.output)
+		// }
 	})
 
 	main_thread()

@@ -8,12 +8,12 @@ self.addEventListener('message', e => {
 	init().then(()=>{
 		// Run a test command to make sure everything is working
 		if(e.data.action === "query") {
-			let output = query(e.data.pointer,e.data.command)
-			postMessage(output);
+			e.data.output = query(e.data.pointer,e.data.command)
+			postMessage(e.data);
 		}
 		else if(e.data.action === "execute") {
-			let output = execute(e.data.pointer,e.data.command)
-			postMessage(output);
+			e.data.output = execute(e.data.pointer,e.data.command)
+			postMessage(e.data);
 		}
 	})
 })
