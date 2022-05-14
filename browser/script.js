@@ -1,6 +1,11 @@
 import init, {main_thread,callback_query,callback_execute} from "/pkg/rusqlite_webworker.js"
 
+
+//Start the web worker
 const worker = new Worker('worker.js', { type: "module" })
+
+
+// Get messages back from the web worker and pass the data back to wasm code
 worker.addEventListener("message", e=> {
 	console.log(e)
 
@@ -14,26 +19,18 @@ worker.addEventListener("message", e=> {
 
 let actions = ["execute","query"]
 
-window.sqlite_execute = command => {
-	console.log("EXECUTE:",command)
-	worker.postMessage({
-		action:"execute",
-		command,
-	})
-}
 
-window.sqlite_query = command => {
-	console.log("QUERY:",command)
-	worker.postMessage({
-		action:"query",
-		command,
-	})
-}
 
 window.browser_dbg = (a) => {
 	console.log(a)
 }
 
+// Functions that wasm code will call when it wants to perform an sql query
+window.sqlite = (action,command) => {
+	worker.postMessage({action,command})
+}
+
+// Start executing wasm code
 init().then(() => main_thread())
 
 // async function start() {

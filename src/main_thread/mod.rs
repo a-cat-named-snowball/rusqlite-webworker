@@ -11,7 +11,7 @@ extern crate console_error_panic_hook;
 // that would be less save, since ownership would be lost and data could
 // be overwritten.
 
-// BUG: Recursive mutex.
+// BUG: Recursive mutex causes panic.
 // Maybe switch to RwLock?
 static mut WEB_WORKER:Option<Mutex<WebWorkerSqlite>> = None;
 
@@ -30,12 +30,13 @@ pub fn main_thread() {
 	// This really needs wrapped in a macro or something -
 	// can't expect anyone to write lots of code like this.
 	unsafe {
-		WEB_WORKER.as_ref().unwrap().lock().unwrap().execute("
+		let mut con = WEB_WORKER.as_ref().unwrap().lock().unwrap();
+		con.execute("
 		CREATE TABLE test (
 			id INTEGER PRIMARY KEY,
 			name TEXT NOT NULL
-		);",Box::new(|mut con,_|{
-			con.query("SELECT * from test",Box::new(|_,rows:Vec<String>|{
+		);",Box::new(|_|{
+			con.query("SELECT * from test",Box::new(|rows:Vec<String>|{
 				browser_dbg(format!("{:}",rows[0]));
 			}));
 		}));
@@ -47,19 +48,15 @@ pub fn main_thread() {
 #[wasm_bindgen(js_namespace = window, js_name = browser_dbg)]
 extern { pub fn browser_dbg(s:String); }
 
-// These JS functions will pass commands to the web worker
-#[wasm_bindgen]
-extern {
-	#[wasm_bindgen(js_namespace = window, js_name = sqlite_execute)]
-	pub fn sqlite_execute(command:&str);
-	#[wasm_bindgen(js_namespace = window, js_name = sqlite_query)]
-	pub fn sqlite_query(command:&str);
-}
+// These functions will pass an action and a command to the web worker
+#[wasm_bindgen(js_namespace = window, js_name = sqlite)]
+extern { pub fn sqlite(action:&str,command:&str); }
 
 
+// Storing seperate callbacks for each type of data that can be returned
 struct WebWorkerSqlite {
-	query_callback:Option<Box<dyn Fn(MutexGuard<WebWorkerSqlite>,Vec<String>)>>,
-	execute_callback:Option<Box<dyn Fn(MutexGuard<WebWorkerSqlite>,u32)>>,
+	query_callback:Option<Box<dyn Fn(Vec<String>)>>,
+	execute_callback:Option<Box<dyn Fn(u32)>>,
 }
 
 impl WebWorkerSqlite {
@@ -69,17 +66,30 @@ impl WebWorkerSqlite {
 			execute_callback:None,
 		}
 	}
-
-	fn execute(&mut self,command:&str,f: Box<dyn Fn(MutexGuard<WebWorkerSqlite>,u32)>){
+	fn execute(
+		&mut self,
+		command:&str,
+		f: Box<dyn Fn(u32)>
+	){
 		self.execute_callback = Some(f);
-		unsafe { sqlite_execute(command); }
+		unsafe {
+			// rust-analyzer can't decide if this is safe or unsafe.
+			// It compiles either way.
+			sqlite("execute",command);
+		}
 	}
-
-	fn query(&mut self,command:&str,f: Box<dyn Fn(MutexGuard<WebWorkerSqlite>,Vec<String>)>){
+	fn query(
+		&mut self,
+		command:&str,
+		f: Box<dyn Fn(Vec<String>)>
+	){
 		self.query_callback = Some(f);
-		unsafe { sqlite_query(command); }
+		unsafe {
+			// rust-analyzer can't decide if this is safe or unsafe.
+			// It compiles either way.
+			sqlite("query",command);
+		}
 	}
-
 } 
 
 
@@ -89,7 +99,6 @@ pub fn callback_query(data:String) {
 	let mut ww = unsafe { WEB_WORKER.as_ref().unwrap() };
 
 	ww.lock().unwrap().query_callback.as_ref().unwrap()(
-		ww.lock().unwrap(),
 		vec![data;1]
 	);
 }
@@ -100,7 +109,6 @@ pub fn callback_execute(data:u32) {
 	let mut ww = unsafe { WEB_WORKER.as_ref().unwrap() };
 
 	ww.lock().unwrap().execute_callback.as_ref().unwrap()(
-		ww.lock().unwrap(),
 		data.clone()
 	);
 }

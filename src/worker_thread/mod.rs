@@ -54,11 +54,8 @@ pub fn query(command: &str) -> String {
 
 		let mut stmt = conn.prepare(command).unwrap();
 		let rows = stmt.query([]).unwrap();
+		//rows
 	}
 
-	//Box::into_raw(Box::new(WasmRefCell::new(self))) as u32
-	//let test_out = vec![vec!["test value".to_owned();5];10];
-	//test_out.iter().map(|v|v.join("\t")).collect::<Vec<String>>().iter().join(|r|r.join("\n"));
-
-	return "a\tb\tc\na\tb\tc\nd\te\tf\nd\te\tf".to_owned()
+	"a\tb\tc\na\tb\tc\nd\te\tf\nd\te\tf".to_owned()
 }
