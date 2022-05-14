@@ -43,7 +43,6 @@ pub fn execute(command: &str) -> usize {
 	}
 }
 
-//TODO: Better representation of rows
 //TODO: Handle sql errors in a better way than panicking
 #[wasm_bindgen]
 pub fn query(command: &str) -> String {
@@ -55,14 +54,28 @@ pub fn query(command: &str) -> String {
 		let conn = &lock.conn;
 
 		let mut stmt = conn.prepare(command).unwrap();
-		let _rows = stmt.query([]).unwrap();
-		// rows.map(|row|{
-		// 	row.get(0)
-		// }).collect::<Vec<String>>();
-		//rows
+		
+		// Here we run the query and convert the result into a string.
+		// Columns are separated with \t, rows separated with \n.
+		stmt.query_map([],|row|{
+			let mut elements:Vec<String> = Vec::new();
+			let mut i = 0;
+			loop {
+				let column = row.get(i);
+				match column {
+					Err(_)  => break,
+					Ok(col) => elements.push(col),
+				}
+				i += 1;
+			}
+			Ok(elements.join("\t"))
+		})
+		.unwrap()
+		.flatten()
+		.collect::<Vec<String>>()
+		.join("\n")
 	}
 
-	"a\tb\tc\na\tb\tc\nd\te\tf\nd\te\tf".to_owned()
 }
 
 
