@@ -32,11 +32,18 @@ pub fn main_thread() {
 		// This really needs wrapped in a macro or something -
 		// can't expect anyone to write lots of code like this.
 		let mut con = WEB_WORKER.as_ref().unwrap().lock().unwrap();
-		con.execute("
-		CREATE TABLE test (
-			id INTEGER PRIMARY KEY,
-			name TEXT NOT NULL
-		);",sql_executed_cb);
+
+		// con.execute("
+		// CREATE TABLE test (
+		// 	id INTEGER PRIMARY KEY,
+		// 	name TEXT NOT NULL
+		// );",sql_executed_cb);
+
+		con.perform_test("3",test_cb);
+		fn test_cb(modified_value:&str){
+			browser_dbg(format!("{:}",modified_value));
+		}
+		
 		
 	};
 }
@@ -65,6 +72,7 @@ extern { pub fn sqlite(action:&str,command:&str); }
 struct WebWorkerSqlite {
 	query_callback:Option<fn(Vec<Vec<&str>>)>,
 	execute_callback:Option<fn(u32)>,
+	test_callback:Option<fn(&str)>,
 }
 
 impl WebWorkerSqlite {
@@ -72,6 +80,7 @@ impl WebWorkerSqlite {
 		Self {
 			query_callback:None,
 			execute_callback:None,
+			test_callback:None,
 		}
 	}
 	fn execute(
@@ -80,7 +89,6 @@ impl WebWorkerSqlite {
 		f: fn(u32)
 	){
 		self.execute_callback = Some(f);
-		// rust-analyzer thinks this is unsafe, but compiler says it's safe
 		sqlite("execute",command);
 	}
 	fn query(
@@ -89,8 +97,15 @@ impl WebWorkerSqlite {
 		f: fn(Vec<Vec<&str>>)
 	){
 		self.query_callback = Some(f);
-		// rust-analyzer thinks this is unsafe, but compiler says it's safe
 		sqlite("query",command);
+	}
+	fn perform_test(
+		&mut self,
+		command:&str,
+		f: fn(&str)
+	){
+		self.test_callback = Some(f);
+		sqlite("test",command);
 	}
 } 
 
@@ -116,6 +131,16 @@ pub fn callback_execute(data:u32) {
 	let ww = unsafe { WEB_WORKER.as_ref().unwrap() };
 
 	ww.lock().unwrap().execute_callback.as_ref().unwrap()(
+		data.clone()
+	);
+}
+
+#[wasm_bindgen]
+pub fn callback_test(data:&str) {
+
+	let ww = unsafe { WEB_WORKER.as_ref().unwrap() };
+
+	ww.lock().unwrap().test_callback.as_ref().unwrap()(
 		data.clone()
 	);
 }

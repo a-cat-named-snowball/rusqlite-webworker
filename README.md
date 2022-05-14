@@ -9,5 +9,4 @@ View on [http://localhost:8080/browser/index.html](http://localhost:8080/browser
 
 - Return queried rows from web worker instead of dummy data
 - Fix recursive mutex error in main_thread callbacks
-- Add 'n+1' example
 - Handle SQL errors instead of panicking

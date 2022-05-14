@@ -64,3 +64,10 @@ pub fn query(command: &str) -> String {
 
 	"a\tb\tc\na\tb\tc\nd\te\tf\nd\te\tf".to_owned()
 }
+
+
+#[wasm_bindgen]
+pub fn test(command: &str) -> String {
+	let parsed_value = command.parse::<u32>().unwrap();
+	return format!("{:}",parsed_value + 1);
+}

@@ -1,4 +1,4 @@
-import init, {worker_thread_init,execute,query} from "/pkg/rusqlite_webworker.js"
+import init, {worker_thread_init,execute,query,test} from "/pkg/rusqlite_webworker.js"
 
 function log(s){
 	console.log(s)
@@ -19,6 +19,10 @@ self.addEventListener('message', e => {
 		}
 		else if(e.data.action === "execute") {
 			e.data.output = execute(e.data.command)
+			postMessage(e.data);
+		}
+		else if(e.data.action === "test") {
+			e.data.output = test(e.data.command)
 			postMessage(e.data);
 		}
 	})

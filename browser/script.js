@@ -1,4 +1,9 @@
-import init, {main_thread,callback_query,callback_execute} from "/pkg/rusqlite_webworker.js"
+import init, {
+	main_thread,
+	callback_query,
+	callback_execute,
+	callback_test,
+} from "/pkg/rusqlite_webworker.js"
 
 
 //Start the web worker
@@ -15,9 +20,11 @@ worker.addEventListener("message", e=> {
 	else if(e.data.action==="execute"){
 		callback_execute(e.data.output)
 	}
+	else if(e.data.action==="test"){
+		callback_test(e.data.output)
+	}
 })
 
-let actions = ["execute","query"]
 
 
 
