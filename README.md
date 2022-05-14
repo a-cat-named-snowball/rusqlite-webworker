@@ -7,8 +7,7 @@ View on [http://localhost:8080/browser/index.html](http://localhost:8080/browser
 
 ## TODO
 
-- Finish SQL commands in web worker code
-- Better data format for returning rows
-- Fix recursive mutex error
+- Return queried rows from web worker instead of dummy data
+- Fix recursive mutex error in main_thread callbacks
 - Add 'n+1' example
-- Error handling, right now invalid sql queries cause a panic
+- Handle SQL errors instead of panicking
