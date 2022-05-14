@@ -38,7 +38,6 @@ pub fn main_thread() {
 			browser_dbg(format!("{:}",modified_value));
 		}
 
-		// Commented out because it causes an error right now
 		// con.execute("
 		// CREATE TABLE test (
 		// 	id INTEGER PRIMARY KEY,
@@ -57,20 +56,23 @@ pub fn main_thread() {
 
 		con.execute("
 		CREATE TABLE test (
-			name TEXT NOT NULL
+			name TEXT NOT NULL,
+			title TEXT NOT NULL
 		);",sql_executed_cb);
 
 		con.execute(
 			format!(
-				"INSERT INTO test (name) values ('{}');",
-				"testname",
+				"INSERT INTO test (name,title) values ('{}','{}');",
+				"Bob",
+				"Dr"
 			).as_str(),
 		sql_executed_cb);
 
 		con.execute(
 			format!(
-				"INSERT INTO test (name) values ('{}');",
-				"secondname",
+				"INSERT INTO test (name,title) values ('{}','{}');",
+				"Kathy",
+				"Mrs"
 			).as_str(),
 		sql_executed_cb);
 
