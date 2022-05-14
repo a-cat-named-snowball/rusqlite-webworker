@@ -8,3 +8,4 @@ View on [http://localhost:8080/browser/index.html](http://localhost:8080/browser
 ## TODO
 - Handle callbacks in in main_thread another way. Calls can overwrite the callback of previous calls with their own. Doesn't cause a panic if the same cb function is used every time.
 - Handle SQL errors instead of panicking.
+- Fix weirdness with non-text data types

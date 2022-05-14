@@ -42,26 +42,29 @@ pub fn main_thread() {
 
 		// Call out to the web worker to create a table
 		con.execute("
-		CREATE TABLE test (
-			name TEXT NOT NULL,
-			title TEXT NOT NULL
+		CREATE TABLE person (
+			id              TEXT PRIMARY KEY,
+			name            TEXT NOT NULL,
+			data            TEXT
 		);",sql_executed_cb);
 
 		// Now insert a row
 		con.execute(
 			format!(
-				"INSERT INTO test (name,title) values ('{}','{}');",
-				"Bob",
-				"Dr"
+				"INSERT INTO person (id,name, data) VALUES ('{:}','{}', '{}')",
+				"0",
+				"Steven",
+				"d"
 			).as_str(),
 		sql_executed_cb);
 
 		// Another row
 		con.execute(
 			format!(
-				"INSERT INTO test (name,title) values ('{}','{}');",
-				"Kathy",
-				"Mrs"
+				"INSERT INTO person (id,name, data) VALUES ('{:}','{}', '{}')",
+				"1",
+				"Robert",
+				"--some-encoded-data--"
 			).as_str(),
 		sql_executed_cb);
 		
@@ -70,9 +73,11 @@ pub fn main_thread() {
 		}
 
 		// Now select all the rows we inserted and console.log them.
-		con.query("SELECT * from test",sql_query_cb);
+		con.query("SELECT id, name, data FROM person",sql_query_cb);
 		fn sql_query_cb(rows:Vec<Vec<&str>>){
-			browser_dbg(format!("{:?}",rows));
+			browser_dbg(
+				format!("Rows returned:{:?}",rows)
+			);
 		}
 
 	};
