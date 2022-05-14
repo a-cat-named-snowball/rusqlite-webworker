@@ -31,35 +31,23 @@ pub fn main_thread() {
 		// This really needs wrapped in a macro or something -
 		// can't expect anyone to write lots of code like this.
 		let mut con = WEB_WORKER.as_ref().unwrap().lock().unwrap();
-
+		
 		con.perform_test("3",test_cb);
 		fn test_cb(modified_value:&str){
 			// Will output "4" to console.log
 			browser_dbg(format!("{:}",modified_value));
 		}
 
-		// con.execute("
-		// CREATE TABLE test (
-		// 	id INTEGER PRIMARY KEY,
-		// 	name TEXT NOT NULL
-		// );",sql_executed_cb);
-		// fn sql_executed_cb(_rows_changed:u32){
-		// 	unsafe {
-		// 		let mut con = WEB_WORKER.as_ref().unwrap().lock().unwrap();
-		// 		con.query("SELECT * from test",sql_query_cb);
-		// 	}
-		// }
-		
-		// fn sql_query_cb(rows:Vec<Vec<&str>>){
-		// 	browser_dbg(format!("{:}",rows[0][0]));
-		// }
 
+
+		// Call out to the web worker to create a table
 		con.execute("
 		CREATE TABLE test (
 			name TEXT NOT NULL,
 			title TEXT NOT NULL
 		);",sql_executed_cb);
 
+		// Now insert a row
 		con.execute(
 			format!(
 				"INSERT INTO test (name,title) values ('{}','{}');",
@@ -68,6 +56,7 @@ pub fn main_thread() {
 			).as_str(),
 		sql_executed_cb);
 
+		// Another row
 		con.execute(
 			format!(
 				"INSERT INTO test (name,title) values ('{}','{}');",
@@ -75,23 +64,23 @@ pub fn main_thread() {
 				"Mrs"
 			).as_str(),
 		sql_executed_cb);
-
-
-		con.query("SELECT * from test",sql_query_cb);
-
+		
 		fn sql_executed_cb(rows_changed:u32){
 			browser_dbg(format!("rows_changed: {:}",rows_changed));
 		}
-		
+
+		// Now select all the rows we inserted and console.log them.
+		con.query("SELECT * from test",sql_query_cb);
 		fn sql_query_cb(rows:Vec<Vec<&str>>){
 			browser_dbg(format!("{:?}",rows));
 		}
+
 	};
 }
 
 
 
-// Temporary, just using to to console.log things.
+// Using this to console.log things.
 #[wasm_bindgen(js_namespace = window, js_name = browser_dbg)]
 extern { pub fn browser_dbg(s:String); }
 
@@ -104,7 +93,7 @@ extern { pub fn sqlite(action:&str,command:&str); }
 struct WebWorkerSqlite {
 	query_callback:Option<fn(Vec<Vec<&str>>)>,
 	execute_callback:Option<fn(u32)>,
-	test_callback:Option<fn(&str)>,
+	test_callback:Option<fn(&str)>, // For the n+1 example
 }
 
 impl WebWorkerSqlite {
@@ -123,6 +112,8 @@ impl WebWorkerSqlite {
 		self.query_callback = Some(f);
 		sqlite("query",command);
 	}
+
+	// For the n+1 example
 	fn perform_test(&mut self,command:&str,f: fn(&str)){
 		self.test_callback = Some(f);
 		sqlite("test",command);
@@ -132,35 +123,24 @@ impl WebWorkerSqlite {
 
 #[wasm_bindgen]
 pub fn callback_query(data:String) {
-
 	let ww = unsafe { WEB_WORKER.as_ref().unwrap() };
 
-
+	// Transform data into Vec<Vec<String>> for better usability
 	let ret:Vec<Vec<&str>> = data.split("\n")
 		.map(|row|row.split("\t").collect()	)
 	.collect();
 
-	ww.lock().unwrap().query_callback.as_ref().unwrap()(
-		ret
-	);
+	ww.lock().unwrap().query_callback.as_ref().unwrap()(ret);
 }
 
 #[wasm_bindgen]
 pub fn callback_execute(data:u32) {
-
 	let ww = unsafe { WEB_WORKER.as_ref().unwrap() };
-
-	ww.lock().unwrap().execute_callback.as_ref().unwrap()(
-		data.clone()
-	);
+	ww.lock().unwrap().execute_callback.as_ref().unwrap()(data);
 }
 
 #[wasm_bindgen]
 pub fn callback_test(data:&str) {
-
 	let ww = unsafe { WEB_WORKER.as_ref().unwrap() };
-
-	ww.lock().unwrap().test_callback.as_ref().unwrap()(
-		data.clone()
-	);
+	ww.lock().unwrap().test_callback.as_ref().unwrap()(data.clone());
 }
