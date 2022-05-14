@@ -61,10 +61,16 @@ pub fn query(command: &str) -> String {
 			let mut elements:Vec<String> = Vec::new();
 			let mut i = 0;
 			loop {
-				let column = row.get(i);
-				match column {
-					Err(_)  => break,
-					Ok(col) => elements.push(col),
+				// We don't know what type this is, so check them all
+				// TODO: Add support for blobs.
+				let c_str:Result<String,rusqlite::Error> = row.get(i);
+				let c_int:Result<i32,rusqlite::Error> = row.get(i);
+				let c_real:Result<f64,rusqlite::Error> = row.get(i);
+				match (c_str,c_int,c_real) {
+					(Ok(col),_,_) => elements.push(col),
+					(_,Ok(col),_) => elements.push(col.to_string()),
+					(_,_,Ok(col)) => elements.push(col.to_string()),
+					_  => break,
 				}
 				i += 1;
 			}

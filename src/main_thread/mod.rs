@@ -43,7 +43,7 @@ pub fn main_thread() {
 		// Call out to the web worker to create a table
 		con.execute("
 		CREATE TABLE person (
-			id              TEXT PRIMARY KEY,
+			id              INTEGER PRIMARY KEY,
 			name            TEXT NOT NULL,
 			data            TEXT
 		);",sql_executed_cb);
@@ -52,7 +52,7 @@ pub fn main_thread() {
 		con.execute(
 			format!(
 				"INSERT INTO person (id,name, data) VALUES ('{:}','{}', '{}')",
-				"0",
+				0,
 				"Steven",
 				"d"
 			).as_str(),
@@ -62,7 +62,7 @@ pub fn main_thread() {
 		con.execute(
 			format!(
 				"INSERT INTO person (id,name, data) VALUES ('{:}','{}', '{}')",
-				"1",
+				1,
 				"Robert",
 				"--some-encoded-data--"
 			).as_str(),
