@@ -11,6 +11,8 @@ extern crate console_error_panic_hook;
 // that would be less save, since ownership would be lost and data could
 // be overwritten.
 
+// BUG: Recursive mutex.
+// Maybe switch to RwLock?
 static mut WEB_WORKER:Option<Mutex<WebWorkerSqlite>> = None;
 
 
@@ -18,6 +20,7 @@ static mut WEB_WORKER:Option<Mutex<WebWorkerSqlite>> = None;
 #[wasm_bindgen]
 pub fn main_thread() {
 
+	// When Rust panics, show it as console.error 
 	console_error_panic_hook::set_once();
 
 	// Initalize the web worker callback structure

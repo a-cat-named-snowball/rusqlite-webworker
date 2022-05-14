@@ -22,6 +22,8 @@ static mut context:Option<Mutex<SqlContext>> = None;
 
 #[wasm_bindgen]
 pub fn worker_thread_init() -> u32 {
+
+	// When Rust panics, show it as console.error 
 	console_error_panic_hook::set_once();
 
 	unsafe {
@@ -50,8 +52,8 @@ pub fn query(command: &str) -> String {
 		let lock = context.as_ref().unwrap().lock().unwrap();
 		let conn = lock.conn.as_ref().unwrap();
 
-		let stmt = conn.prepare("INSERT INTO a (name) VALUES (?)").unwrap();
-		// let rows = stmt.query([]).unwrap();
+		let mut stmt = conn.prepare(command).unwrap();
+		let rows = stmt.query([]).unwrap();
 	}
 
 	//Box::into_raw(Box::new(WasmRefCell::new(self))) as u32
