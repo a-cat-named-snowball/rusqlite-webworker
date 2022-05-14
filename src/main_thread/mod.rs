@@ -20,7 +20,7 @@ static mut WEB_WORKER:Option<Mutex<WebWorkerSqlite>> = None;
 #[wasm_bindgen]
 pub fn main_thread() {
 
-	// When Rust panics, show it as console.error 
+	// If Rust panics, show it as console.error 
 	console_error_panic_hook::set_once();
 
 	// Initalize the web worker callback structure
@@ -36,8 +36,8 @@ pub fn main_thread() {
 			id INTEGER PRIMARY KEY,
 			name TEXT NOT NULL
 		);",Box::new(|_|{
-			con.query("SELECT * from test",Box::new(|rows:Vec<String>|{
-				browser_dbg(format!("{:}",rows[0]));
+			con.query("SELECT * from test",Box::new(|rows:Vec<Vec<&str>>|{
+				browser_dbg(format!("{:}",rows[0][0]));
 			}));
 		}));
 
@@ -55,7 +55,7 @@ extern { pub fn sqlite(action:&str,command:&str); }
 
 // Storing seperate callbacks for each type of data that can be returned
 struct WebWorkerSqlite {
-	query_callback:Option<Box<dyn Fn(Vec<String>)>>,
+	query_callback:Option<Box<dyn Fn(Vec<Vec<&str>>)>>,
 	execute_callback:Option<Box<dyn Fn(u32)>>,
 }
 
@@ -81,7 +81,7 @@ impl WebWorkerSqlite {
 	fn query(
 		&mut self,
 		command:&str,
-		f: Box<dyn Fn(Vec<String>)>
+		f: Box<dyn Fn(Vec<Vec<&str>>)>
 	){
 		self.query_callback = Some(f);
 		unsafe {
@@ -98,8 +98,13 @@ pub fn callback_query(data:String) {
 
 	let mut ww = unsafe { WEB_WORKER.as_ref().unwrap() };
 
+
+	let ret:Vec<Vec<&str>> = data.split("\n")
+		.map(|row|row.split("\t").collect()	)
+	.collect();
+
 	ww.lock().unwrap().query_callback.as_ref().unwrap()(
-		vec![data;1]
+		ret
 	);
 }
 

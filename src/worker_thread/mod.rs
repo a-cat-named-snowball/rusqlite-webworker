@@ -5,55 +5,62 @@ use std::sync::{Mutex};
 
 extern crate console_error_panic_hook;
 
-// Using a struct here so more information can added later
-struct SqlContext {
-	conn:Option<Connection>,
-}
-impl SqlContext {
-	const fn new() -> Self {
-		Self {
-			conn:None,
-		}
-	}
-}
 
-
+// Needs to be a static mut because we lose don't have ownership after
+// worker_thread_init is done executing, but we need mutable access to it in the
+// query and execute functions that are going to be called by javascript.
 static mut context:Option<Mutex<SqlContext>> = None;
 
-#[wasm_bindgen]
-pub fn worker_thread_init() -> u32 {
+// Using a struct so more information can added later if needed
+struct SqlContext {
+	conn:Connection,
+}
 
-	// When Rust panics, show it as console.error 
+#[wasm_bindgen]
+pub fn worker_thread_init(){
+
+	// If Rust panics, show it as console.error 
 	console_error_panic_hook::set_once();
 
 	unsafe {
 		matches!(context,None);
-		context = Some(Mutex::new(SqlContext::new()));
+		context = Some( Mutex::new( SqlContext {
+			conn:Connection::open_in_memory().unwrap()
+		}));
+
 		let mut lock = context.as_ref().unwrap().lock().unwrap();
-		lock.conn = Connection::open_in_memory().ok();
 	}
-	return 12;
 }
 
+//TODO: Handle sql errors in a better way than panicking
 #[wasm_bindgen]
 pub fn execute(command: &str) -> usize {
 	unsafe {
-		let lock = context.as_ref().unwrap().lock().unwrap();
-		let conn = lock.conn.as_ref().unwrap();
+		let lock = context.as_ref()
+			.expect("worker_thread_init() should have been called first")
+			.lock().unwrap();
+
+		let conn = &lock.conn;
 		conn.execute(command,[]).unwrap()
 	}
 }
 
-//TODO: Return some representation of rows
-
+//TODO: Better representation of rows
+//TODO: Handle sql errors in a better way than panicking
 #[wasm_bindgen]
 pub fn query(command: &str) -> String {
 	unsafe {
-		let lock = context.as_ref().unwrap().lock().unwrap();
-		let conn = lock.conn.as_ref().unwrap();
+		let lock = context.as_ref()
+			.expect("worker_thread_init() should have been called first")
+			.lock().unwrap();
+
+		let conn = &lock.conn;
 
 		let mut stmt = conn.prepare(command).unwrap();
 		let rows = stmt.query([]).unwrap();
+		rows.map(|row|{
+			row.get(0)
+		}).collect::<Vec<String>>();
 		//rows
 	}
 
