@@ -6,7 +6,6 @@
 View on [http://localhost:8080/browser/index.html](http://localhost:8080/browser/index.html)
 
 ## TODO
-
-- Return queried rows from web worker instead of dummy data
-- Fix recursive mutex error in main_thread callbacks
-- Handle SQL errors instead of panicking
+- Fix bug that causes an error on tables with more than one column.
+- Handle callbacks in in main_thread another way. Calls can overwrite the callback of previous calls with their own. Doesn't cause a panic if the same cb function is used every time.
+- Handle SQL errors instead of panicking.
