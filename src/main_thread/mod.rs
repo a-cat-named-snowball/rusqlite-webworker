@@ -23,11 +23,7 @@ pub fn main_thread() {
 	// If Rust panics, show it as console.error 
 	console_error_panic_hook::set_once();
 
-
-
-
 	unsafe {
-
 		// Initalize the web worker callback structure
 		WEB_WORKER = Some(Mutex::new(WebWorkerSqlite::new()));
 
@@ -58,6 +54,36 @@ pub fn main_thread() {
 		// fn sql_query_cb(rows:Vec<Vec<&str>>){
 		// 	browser_dbg(format!("{:}",rows[0][0]));
 		// }
+
+		con.execute("
+		CREATE TABLE test (
+			name TEXT NOT NULL
+		);",sql_executed_cb);
+
+		con.execute(
+			format!(
+				"INSERT INTO test (name) values ('{}');",
+				"testname",
+			).as_str(),
+		sql_executed_cb);
+
+		con.execute(
+			format!(
+				"INSERT INTO test (name) values ('{}');",
+				"secondname",
+			).as_str(),
+		sql_executed_cb);
+
+
+		con.query("SELECT * from test",sql_query_cb);
+
+		fn sql_executed_cb(rows_changed:u32){
+			browser_dbg(format!("rows_changed: {:}",rows_changed));
+		}
+		
+		fn sql_query_cb(rows:Vec<Vec<&str>>){
+			browser_dbg(format!("{:?}",rows));
+		}
 	};
 }
 
@@ -87,27 +113,15 @@ impl WebWorkerSqlite {
 			test_callback:None,
 		}
 	}
-	fn execute(
-		&mut self,
-		command:&str,
-		f: fn(u32)
-	){
+	fn execute(&mut self,command:&str,f: fn(u32)){
 		self.execute_callback = Some(f);
 		sqlite("execute",command);
 	}
-	fn query(
-		&mut self,
-		command:&str,
-		f: fn(Vec<Vec<&str>>)
-	){
+	fn query(&mut self,command:&str,f: fn(Vec<Vec<&str>>)){
 		self.query_callback = Some(f);
 		sqlite("query",command);
 	}
-	fn perform_test(
-		&mut self,
-		command:&str,
-		f: fn(&str)
-	){
+	fn perform_test(&mut self,command:&str,f: fn(&str)){
 		self.test_callback = Some(f);
 		sqlite("test",command);
 	}
