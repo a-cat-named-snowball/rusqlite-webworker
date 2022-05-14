@@ -23,6 +23,9 @@ pub fn main_thread() {
 	// If Rust panics, show it as console.error 
 	console_error_panic_hook::set_once();
 
+
+
+
 	unsafe {
 
 		// Initalize the web worker callback structure
@@ -33,31 +36,32 @@ pub fn main_thread() {
 		// can't expect anyone to write lots of code like this.
 		let mut con = WEB_WORKER.as_ref().unwrap().lock().unwrap();
 
+		con.perform_test("3",test_cb);
+		fn test_cb(modified_value:&str){
+			// Will output "4" to console.log
+			browser_dbg(format!("{:}",modified_value));
+		}
+
+		// Commented out because it causes an error right now
 		// con.execute("
 		// CREATE TABLE test (
 		// 	id INTEGER PRIMARY KEY,
 		// 	name TEXT NOT NULL
 		// );",sql_executed_cb);
-
-		con.perform_test("3",test_cb);
-		fn test_cb(modified_value:&str){
-			browser_dbg(format!("{:}",modified_value));
-		}
+		// fn sql_executed_cb(_rows_changed:u32){
+		// 	unsafe {
+		// 		let mut con = WEB_WORKER.as_ref().unwrap().lock().unwrap();
+		// 		con.query("SELECT * from test",sql_query_cb);
+		// 	}
+		// }
 		
-		
+		// fn sql_query_cb(rows:Vec<Vec<&str>>){
+		// 	browser_dbg(format!("{:}",rows[0][0]));
+		// }
 	};
 }
 
-fn sql_executed_cb(_rows_changed:u32){
-	unsafe {
-		let mut con = WEB_WORKER.as_ref().unwrap().lock().unwrap();
-		con.query("SELECT * from test",sql_query_cb);
-	}
-}
 
-fn sql_query_cb(rows:Vec<Vec<&str>>){
-	browser_dbg(format!("{:}",rows[0][0]));
-}
 
 // Temporary, just using to to console.log things.
 #[wasm_bindgen(js_namespace = window, js_name = browser_dbg)]
